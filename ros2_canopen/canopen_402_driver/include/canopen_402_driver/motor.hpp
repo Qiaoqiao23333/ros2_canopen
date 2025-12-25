@@ -66,7 +66,7 @@ public:
     switching_state_(switching_state),
     monitor_mode_(true),
     // Some drives need more time to transition through CiA402 states during bringup.
-    state_switch_timeout_(20),
+    state_switch_timeout_(60),
     homing_timeout_seconds_(homing_timeout_seconds)
   {
     this->driver = driver;

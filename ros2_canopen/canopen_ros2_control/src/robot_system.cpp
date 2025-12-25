@@ -137,14 +137,28 @@ hardware_interface::CallbackReturn RobotSystem::on_configure(
 hardware_interface::CallbackReturn RobotSystem::on_activate(
   const rclcpp_lifecycle::State & previous_state)
 {
+  // FIXED: Re-enabled automatic motor initialization.
+  // This may block for up to 60 seconds per motor, but it's necessary to register
+  // the operation modes. Without this, allocMode() returns null causing
+  // "Mode is not supported" errors.
+  //
+  // The spawner timeouts in the launch file have been increased to accommodate this.
+  
+  RCLCPP_INFO(robot_system_logger, 
+    "Initializing motors (this may take up to 180 seconds)...");
+  
   for (auto & data : robot_motor_data_)
   {
+    RCLCPP_INFO(robot_system_logger, "Initializing motor: %s", data.joint_name.c_str());
     if (!data.driver->init_motor())
     {
       RCLCPP_ERROR(robot_system_logger, "Failed to activate '%s'", data.joint_name.c_str());
       return CallbackReturn::FAILURE;
     }
+    RCLCPP_INFO(robot_system_logger, "Successfully initialized: %s", data.joint_name.c_str());
   }
+  
+  RCLCPP_INFO(robot_system_logger, "All motors initialized successfully!");
   return CallbackReturn::SUCCESS;
 }
 hardware_interface::CallbackReturn RobotSystem::on_deactivate(
@@ -200,11 +214,17 @@ std::vector<hardware_interface::CommandInterface> RobotSystem::export_command_in
 hardware_interface::return_type RobotSystem::read(
   const rclcpp::Time & time, const rclcpp::Duration & period)
 {
+  // DISABLED: The read_state() calls get_position()/get_speed() which make blocking
+  // SDO reads. Even with polling:true and TPDOs configured, these are blocking the
+  // executor and preventing service callbacks from being processed.
+  // 
+  // TODO: Investigate why get_position() doesn't use TPDO data instead of SDO reads.
+  
   // Iterate over joints
-  for (canopen_ros2_control::Cia402Data & data : robot_motor_data_)
-  {
-    data.read_state();
-  }
+  // for (canopen_ros2_control::Cia402Data & data : robot_motor_data_)
+  // {
+  //   data.read_state();
+  // }
 
   return hardware_interface::return_type::OK;
 }
